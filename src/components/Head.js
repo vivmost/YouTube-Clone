@@ -1,14 +1,26 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { toggleMenu } from "utils/appSlice";
 import { Search_API } from "utils/constants";
+import { cacheResults } from "utils/searchSlice";
+
+//build search css and onclick item search
 
 const Head = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const dispatch = useDispatch();
+  const searchCache = useSelector((store) => store.search);
 
   useEffect(() => {
-    const timer = setTimeout(() => getSearchSuggestions(), 200);
+    const timer = setTimeout(() => {
+      if (searchCache[searchQuery]) {
+        setSuggestions(searchCache[searchQuery]);
+      } else {
+        getSearchSuggestions();
+      }
+    }, 200);
 
     return () => {
       clearTimeout(timer);
@@ -19,9 +31,10 @@ const Head = () => {
     const data = await fetch(Search_API + searchQuery);
     const json = await data.json();
     setSuggestions(json[1]);
-  };
 
-  const dispatch = useDispatch();
+    // update cache
+    dispatch(cacheResults({ [searchQuery]: json[1] }));
+  };
 
   const toggleMenuHandler = () => {
     dispatch(toggleMenu());
@@ -51,19 +64,24 @@ const Head = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setShowSuggestions(false)}
           />
           <button className=" border border-gray-400 px-5 py-2 rounded-r-full bg-slate-100">
             🔍
           </button>
         </div>
-        <div className="fixed bg-white px-2 py-2 w-1/3 shadow-lg rounded-lg">
-          <ul>
-            <li className="py-2 shadow-sm hover:bg-gray-100">Iphone</li>
-            <li className="py-2 shadow-sm hover:bg-gray-100">Iphone</li>
-            <li className="py-2 shadow-sm hover:bg-gray-100">Iphone</li>
-            <li className="py-2 shadow-sm hover:bg-gray-100">Iphone</li>
-          </ul>
-        </div>
+        {showSuggestions && (
+          <div className="fixed bg-white px-2 py-2 w-1/3 shadow-lg rounded-lg">
+            <ul>
+              {suggestions.map((s) => (
+                <li key={s} className="py-2 px-3 shadow-sm hover:bg-gray-100">
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="col-span-1">
